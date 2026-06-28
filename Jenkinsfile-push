@@ -2,54 +2,84 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'new-app'
-        REPO_URL = "https://github.com/Waleeddarwesh/jenkins-dockerhub.git"
+        APP_NAME = 'web-app'
+        DOCKER_IMAGE = 'waleeddarwesh/jenkins'
     }
 
     stages {
-        stage('Getting Repo files') {
+
+        stage('Checkout') {
             steps {
-                git branch: "main", credentialsId: 'github', url: "${REPO_URL}"
+                checkout scm
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
+                sh """
+                    docker build -t ${APP_NAME}:${BUILD_NUMBER} .
+                """
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+
                     sh """
-                        docker build -t ${APP_NAME}:${BUILD_NUMBER} .
+                        echo \$DOCKER_PASSWORD | docker login \
+                        -u \$DOCKER_USERNAME \
+                        --password-stdin
                     """
                 }
+            }
+        }
+
+        stage('Tag Docker Image') {
+            steps {
+                sh """
+                    docker tag ${APP_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    docker tag ${APP_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
+                """
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-
-                        sh """
-                            echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
-
-                            docker tag ${APP_NAME}:${BUILD_NUMBER} ${DOCKER_USERNAME}/${APP_NAME}:${BUILD_NUMBER}
-
-                            docker push ${DOCKER_USERNAME}/${APP_NAME}:${BUILD_NUMBER}
-                        """
-
-                    }
-                }
+                sh """
+                    docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    docker push ${DOCKER_IMAGE}:latest
+                """
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Logout Docker Hub') {
             steps {
-                script {
-                    sh """
-                        docker run -p 5000:5000 --name "${APP_NAME}"-"main"-${BUILD_NUMBER} -d ${APP_NAME}:${BUILD_NUMBER}
-                        docker ps
-                    """
-                }
+                sh "docker logout"
             }
+        }
+    }
+
+    post {
+
+        success {
+            echo "Docker image pushed successfully."
+        }
+
+        failure {
+            echo "Pipeline failed."
+        }
+
+        always {
+            sh """
+                docker image prune -f || true
+            """
         }
     }
 }
