@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "new-app"
+        APP_NAME = "jenkins"
         REPO_URL = "https://github.com/Waleeddarwesh/jenkins-dockerhub.git"
         BRANCH = "main"
     }
