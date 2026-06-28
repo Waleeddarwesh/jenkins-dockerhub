@@ -51,11 +51,10 @@ pipeline {
                         passwordVariable: 'DOCKER_PASSWORD'
                     )
                 ]) {
-
-                    sh '''
-                        docker tag '"${APP_NAME}:${BUILD_NUMBER}"' "$DOCKER_USERNAME/${APP_NAME}:${BUILD_NUMBER}"
-                        docker tag '"${APP_NAME}:${BUILD_NUMBER}"' "$DOCKER_USERNAME/${APP_NAME}:latest"
-                    '''
+                    sh """
+                        docker tag ${APP_NAME}:${BUILD_NUMBER} ${DOCKER_USERNAME}/${APP_NAME}:${BUILD_NUMBER}
+                        docker tag ${APP_NAME}:${BUILD_NUMBER} ${DOCKER_USERNAME}/${APP_NAME}:latest
+                    """
                 }
             }
         }
